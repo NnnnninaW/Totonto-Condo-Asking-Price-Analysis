@@ -14,13 +14,28 @@ bibliography: references.bib
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
+#Import needed packages using the function "library"
 library(tidyverse)
-library(palmerpenguins)
+library(here)
+
+#Load the original data set
+data <-
+  read_csv(here::here("inputs/data/toronto.csv"))
 ```
 
+
 # Introduction
+Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto[@Jordon]. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.[@WOWA]. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
+
+We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
 
 # Data
+```{r, include=FALSE}
+#Check some basic characteristics of the original data using functions "glimpse", "colnames"
+glimpse(data)
+colnames(data)
+
+```
 
  
 
@@ -53,7 +68,7 @@ Weaknesses and next steps should also be included.
 # Appendix {-}
 
 
-# Additional details
+
 
 
 \newpage
