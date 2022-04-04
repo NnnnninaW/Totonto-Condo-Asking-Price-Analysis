@@ -4,10 +4,10 @@ This repository is an anlysis about factors affecting Toronto condo asking price
 
 We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
 
-It is organised as follows:
-## Inputs
+## It is organised as follows:
+### Inputs
 Data folder ontains original dataset and cleaned dataset for the analysis. Literature folder contains relevant literatures for our analysis.
-## Outputs
+### Outputs
 Paper folder includes the produced R markdown file with the analysis conducted, reference list, and the pdf version of the analysis accordingly.
-## Scripts
+### Scripts
 This folder contains the produced scripts of our analysis.
