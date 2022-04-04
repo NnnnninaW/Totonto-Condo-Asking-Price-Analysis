@@ -1,4 +1,4 @@
-# starter_folder
+# Toronto Condo Asking Price Analysis
 
 This repository is an anlysis about factors affecting Toronto condo asking prices. Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
 
