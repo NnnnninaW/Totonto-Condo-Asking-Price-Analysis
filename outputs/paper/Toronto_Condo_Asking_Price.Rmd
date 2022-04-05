@@ -4,7 +4,7 @@ author:
   - Sijian Wu
 thanks: "Code and data are available at: https://github.com/NnnnninaW/Totonto-Condo-Asking-Price-Analysis.git."
 date: "`r format(Sys.time(), '%d %B %Y')`"
-abstract: "First sentence. Second sentence. Third sentence. Fourth sentence."
+abstract: "Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between Toronto condo asking price and features of the condo. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million."
 output:
   bookdown::pdf_document2
 toc: FALSE
@@ -23,13 +23,6 @@ data <-
   read_csv(here::here("inputs/data/toronto.csv"))
 ```
 
-
-# Introduction
-Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto[@Jordon]. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.[@WOWA]. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
-
-We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
-
-# Data
 ```{r, include=FALSE}
 #Check some basic characteristics of the original data using functions "glimpse", "colnames"
 glimpse(data)
@@ -37,9 +30,139 @@ colnames(data)
 
 ```
 
- 
 
 
+# Introduction
+Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto[@Jordon]. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.[@WOWA]. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
+
+We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
+
+# Data
+
+We started our analysis by using R [@citeR], tidyverse[@tidyverse], here[@here].
+
+## Data Source
+
+```{r, include=FALSE}
+#Select home type that is Condo, and response variable = sale offer asking prices,for my selected topic : What is affecting the Condo Asking Price in Toronto?
+#Create a single measurement for location as distance to downtown using CN Tower (latitude = 43.642567,-79.387054) as the benchmark, transform degree to km -> *110
+#bedrooms, bathrooms, parking spots transformed
+#Reverse select variables that are inapplicable for our topic or it is inapplicable to perform a multiple linear regression model
+
+data_cleaned <- data %>%
+  filter(home_type == "Condo", 
+         offer == "Sale",
+         asking_price <= 1.5e6)%>%
+  mutate(distance_to_dt = sqrt((latitude-43.642567)^2+(longitude+79.387054)^2)*110, 
+         has_locker= as.logical(has_locker),
+         bedrooms=bedrooms/sqft_max,
+         bathrooms=bathrooms/sqft_max,
+         parking_spots=parking_spots/sqft_max) %>%
+  dplyr::select(
+    !c(date_available,
+      date_available_period,
+      exposure,
+      outdoor_space,
+      created_at,
+      source_timestamp,
+      slogan,
+      amenities,
+      tags,
+      title_to_land,
+      filter_type,
+      filter_value,
+      type,
+      subtitle,
+      open_houses,
+      `_geoloc`,
+      objectID,
+      `_highlightResult`,
+      mls_number,
+      coordinates_source,
+      coordinates_geohash,
+      title,
+      sub_type,
+      status,
+      banner_id,
+      property_class,
+      property_type,
+      unit_name,
+      unit_number,
+      corporation_jurisdiction,
+      corporation_number,
+      advertise_permission,
+      featured,
+      exclusive,
+      promoted,
+      building_id,
+      building_age,
+      address_id,
+      street_id,
+      neighbourhood_id,
+      neighbourhood_name,
+      latitude,
+      longitude,
+      locality_id,
+      locality_name,
+      locality_parent_id,
+      locality_parent_name,
+      locality_grandparent_id,
+      locality_grandparent_name,
+      province_id,
+      province_name,
+      country_id,
+      country_name,
+      url,
+      tax,
+      tax_year,
+      bedrooms_plus,
+      bed_type,
+      sqft_source,
+      lot_size,
+      lot_front,
+      lot_depth,
+      pin_to_front,
+      ranking,
+      photo_version,
+      photo_base_url,
+      furnished_id,
+      property_class_name,
+      entry_date,
+      entry_date_unix,
+      street_name,
+      brokerage,
+      brokerage_id,
+      brokerage_name,
+      sublocality_id,
+      sublocality_name
+    )
+  )
+  
+factors <- NULL
+
+for (i in colnames(data_cleaned)) {
+    if (class(data_cleaned[[i]]) == "character") {
+      factors = c(factors, i)
+    }
+}
+
+data_cleaned%>%
+  write_csv(here::here("inputs/data/cleaned.csv"))
+```
+
+
+```{r, echo=FALSE}
+Price <- data_cleaned %>%  
+  ggplot(aes(x = asking_price)) +
+  geom_histogram(aes(y=..density..), bins=10, colour = "black", fill = "light yellow") + 
+   labs(title = "Asking Price Distribution Histogram",
+        x = "Asking Price",
+        y = "Density")+
+  geom_density()
+Price
+
+#Not perfectly Normal, slightly skewed, but it is unimodal and good enough to proceed
+```
 
 # Model
 
@@ -50,8 +173,6 @@ colnames(data)
 # Discussion
 
 ## First discussion point
-
-If my paper were 10 pages, then should be be at least 2.5 pages. The discussion is a chance to show off what you know and what you learnt from all this. 
 
 ## Second discussion point
 
