@@ -17,7 +17,10 @@ knitr::opts_chunk$set(echo = TRUE)
 #Import needed packages using the function "library"
 library(tidyverse)
 library(here)
-
+library(car)
+library(GGally)
+library(leaps)
+library(MASS)
 #Load the original data set
 data <-
   read_csv(here::here("inputs/data/toronto.csv"))
@@ -35,7 +38,9 @@ colnames(data)
 # Introduction
 Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto[@Jordon]. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.[@WOWA]. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
 
-We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
+We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. Our final model has response variable as Toronto condo asking price, and predictor variables as Distance to Downtown, Building Age Maximum, and Square Foot Minimum. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
+
+ We would introduce our methods, results, interpretations, and limitations in the following sections.
 
 # Data
 
@@ -150,6 +155,11 @@ data_cleaned%>%
   write_csv(here::here("inputs/data/cleaned.csv"))
 ```
 
+Before we start, we cleaned the dataset to focus on only condos in Toronto and only the asking price accordingly. There is many excess information like other property types and many inapplicable variables that would be problematic for us to build the model. We created a new predictor variable called “Distance to Downton” which combines all location information by using the CN Tower as a benchmark.
+
+First, it is crucial that we could validate our final model, so we use the Validation Methods to check if our final model is good enough not only for our collected sample, but also for others from the same population. We randomly created a “train dataset” that would be used to implement all of our analysis and a “test dataset” for evaluations. 
+
+Secondly, we would perform an Exploratory Data Analysis (EDA) to identify potential model violations.
 
 ```{r, echo=FALSE}
 Price <- data_cleaned %>%  
@@ -166,9 +176,509 @@ Price
 
 # Model
 
+We would also assess assumptions mentioned below formally with Residual Scatter Plots. Residuals are the distance between the true values and our fitted value so that any violations in assumptions should also appear in the residuals. We also need to check two conditions first to examine if a linear relation model were inappropriate, and if there are highly non-linear relations between our predictors. Simultaneously, we do not want any strong correlations between any of the predictor variables which is Multicollinearity. Multicollinearity could lead to misunderstanding and much larger standard errors. So, we would use the Variance Inflation Factor (VIF) to measure how inflated the errors will be due to the relationship of one predictor to the others. If any significant violations are detected, we would see whether a transformation were needed.
+
+Overall, we need to make sure it is reasonable for us to apply the MLR Model by checking these assumptions:
+	Response variable is related to predictor variables by the linear regression model that only the predictors we are including as predictors are related to the response. 
+	Do not want to see any systematic patterns in residual plots, such as a curve.
+	The errors are uncorrelated.
+	Do not want to see large clusters of residuals that have obvious separation from the rest.
+	The errors have a common variance.
+	Do not want to see any pattern especially a fanning pattern where residuals gradually become more spread out.
+	The errors are Normally distributed.
+	Do not want to see severe deviations in residuals.
+Then, we need to see whether there are problematic observations such as Leverage points, Outliers, and Influential points to fully understand why the estimated regression line is being placed where it is. Finally, we would go over the automated selection processes to learn about what are the suggested models. Combining contextual reasons, we would generate three preferred models for validation. We would fit them in our test dataset to compare their properties, understand potential limitations, and choose final model. At the end, instead of modifying our previous analysis, we would conclusively discuss our results with observed limitations.
+
+```{r, include=FALSE}
+#Create train and test data set 50/50, and prepare for validation at the end
+set.seed(1)
+train <- data_cleaned[sample(1:nrow(data_cleaned), 0.5 * nrow(data_cleaned), replace=F), ]
+test <- data_cleaned[which(!(data_cleaned$id %in% train$id)),]
+train%>%
+  write_csv(here::here("inputs/data/cleaned_train.csv"))
+test%>%
+  write_csv(here::here("inputs/data/cleaned_test.csv"))
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+#Check if the train dataset and test dataset are capturing similar observations
+mtr <- lapply(train, mean)
+sdtr <- lapply(train, sd)
+mtest <- lapply(test, mean)
+sdtest <- lapply(test, sd)
+
+cbind(mtr, sdtr, mtest, sdtest) %>% knitr::kable(digits = 4)
+```
+
+```{r, warning=FALSE}
+train[!colnames(train) %in% factors] %>%
+  pivot_longer(colnames(train)[!colnames(train) %in% factors][-2],
+               values_to = "Value", names_to = "Variable") %>%
+  ggplot(aes(x = Value, y = asking_price )) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, colour = "blue") +
+  facet_wrap(~Variable, nrow = 4, scales = "free") +
+  labs(x = "",
+       y = "Asking Price",
+       title = "Scatterplots of Numerical Predcitor Variables")
+ggsave("scatterplots.png", width = 15, height = 15, units = "in")
+```
+
+```{r, warning=FALSE, echo=FALSE}
+train %>%
+  pivot_longer(factors,
+               values_to = "Value", names_to = "Variable") %>%
+  ggplot(aes(x = Value, y = asking_price )) +
+  geom_point() +
+  geom_boxplot() +
+  facet_wrap(~Variable, nrow = 3, scales = "free") +
+  labs(x = "",
+       y = "Asking Price",
+       title = "Boxplots of Categorical Predictor Variable")
+ggsave("boxplots.png", width = 15, height = 15, units = "in")
+```
+```{r}
+train[!colnames(train) %in% factors] %>%
+  pivot_longer(colnames(train)[!colnames(train) %in% factors], values_to = "Value", names_to = "Variable") %>%
+  ggplot(aes(x = Value)) +
+  geom_boxplot() + facet_wrap(~Variable, scales = "free")
+```
+
+```{r}
+train[colnames(train) %in% factors] %>%
+  pivot_longer(colnames(train)[colnames(train) %in% factors], values_to = "Value", names_to = "Variable") %>%
+  ggplot(aes(x = Value)) +
+  geom_boxplot() + facet_wrap(~Variable, scales = "free")
+ggsave("levels.png", width = 15, height = 15, units = "in")
+```
+
+```{r, include=FALSE}
+#Delete the variables that only have one level as all their entries has only one value
+train <- train %>% 
+  dplyr::select(!c(id, pool, offer, furnished, home_type, has_locker))
+colnames(train)
+```
 
 
 # Results
+
+```{r, include=FALSE}
+full_1<- lm(asking_price ~., data = train)
+summary(full_1)
+
+```
+
+```{r, include=FALSE}
+#checking multicollinearity
+vif(lm(asking_price ~., data = train)) %>%
+  as.data.frame() %>%
+  filter(`GVIF^(1/(2*Df))` > 5)
+```
+
+```{r, include=FALSE}
+#removing sqft_max since it has significant multicollinearity
+train <- train %>%
+  dplyr::select(!c(sqft_max))
+colnames(train)
+```
+
+
+```{r, include=FALSE, warning=FALSE}
+#Also check if there are more potential multicollinearity along with checking Condition 2
+train[,-c(1,1)] %>% na.omit() %>% ggpairs()
+ggsave("condition2.png", width = 15, height = 15, units = "in")
+
+#Further detect some multicollinearity between predictors through the graphs
+```
+
+```{r, include=FALSE}
+#keeping the variables that do not appear to have significant multicollinearity
+selected_train <- train %>%
+  dplyr::select(asking_price, distance_to_dt, building_age_max, bathrooms, parking_spots, sqft_min, photo_count)
+selected_train%>%
+  write_csv(here::here("inputs/data/selected_train.csv"))
+
+```
+
+```{r, warning=FALSE, include=FALSE}
+#checking condition 2 and multicollinearity again on the new selected predictors
+selected_train %>% na.omit() %>% ggpairs()
+ggsave("condition2_rechecked.png", width = 15, height = 15, units = "in")
+
+```
+
+```{r, include=FALSE}
+# Revised full model according to Multicollinearity existance
+full2<- lm(asking_price ~., data = selected_train)
+summary(full2)
+vif(full_1)
+vif(full2)
+
+```
+
+```{r, warning=FALSE, condition1, fig.cap="Conditon1", echo=FALSE}
+# Condition 1
+o <- order(full_1$fitted.values)
+
+conditon_1 <- plot((full_1$fitted.values + full_1$residuals) ~ full_1$fitted.values, main="Y versus Y-hat", xlab="Y-hat", ylab="Y")
+abline(a = 0, b = 1) 
+lines(lowess(I(full_1$fitted.values + full_1$residuals) ~ full_1$fitted.values), lty=2)
+```
+
+```{r, include=FALSE}
+full_1$fitted.values %>% length()
+```
+
+
+```{r, include=FALSE}
+# see how many N/A in each variable
+f <- function(x) {
+  x %>% is.na() %>% sum()
+}
+
+lapply(selected_train, f)
+```
+
+
+```{r, residual-plots, fig.cap="Residual Plots", echo=FALSE}
+#Checking first three assumptions by using residual plots, and check Normal assumption with Normal QQ plot
+par(mfrow=c(2, 2))
+plot(full2)
+par(mfrow=c(2,4))
+for(i in c(2:7)){
+  plot(rstandard(full2) ~ na.omit(selected_train)[[i]], xlab=names(selected_train)[i], ylab="Residuals")
+}
+```
+
+```{r, include=FALSE}
+p <- powerTransform(lm(asking_price ~ ., data = selected_train))
+summary(p)
+
+
+#decide not to perform transformation
+```
+
+```{r, include=FALSE}
+#checking multicollinearity again
+
+vif(full2)
+
+colnames(selected_train)
+
+#no significant Multicollinearity which is good
+```
+
+
+
+```{r, include=FALSE}
+#Check if there are leverage points
+#Leverage point a single observation whose predictor values are overall quite distant from the center of all the predictors 
+
+p <- length(coef(full2))-1
+n <-length(selected_train$asking_price)
+p
+n
+
+h <- hatvalues(full2)
+threshold <- 2 * (p+1)/n
+w <- which(h > threshold)
+w
+
+
+colnames(selected_train)
+#add a scatter plot to see whether it is one predictor driving this or it is a combination
+par(mfrow=c(2,3))
+plot(selected_train[[1]]~selected_train[[2]], main="Asking Price vs Distance to Downtown", xlab="Distance to Downtown", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[2]][w], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[3]], main="Asking Price vs Max Building Age", xlab="Max Building Age", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[3]][w], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[4]], main="Asking Price vs Bathrooms", xlab="Bathrooms", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[4]][w], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[5]], main="Asking Price vs Parking Spots", xlab="Parking Spots", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[5]][w], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[6]], main="Asking Price vs Photo Count", xlab="Photo Count", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[6]][w], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[7]], main="Asking Price vs Sqft Min", xlab="Sqft Min", ylab="Asking Price")
+points(selected_train[[1]][w] ~ selected_train[[7]][w], col="red", pch=19)
+
+```
+
+```{r, include=FALSE}
+#check if there are outlier, We will use $[-4, 4]$ as cutoffs since the dataset is large.
+#Outlier would be something that is not fitting with the overall trend.
+r <- rstandard(full2)
+out <- which(r > 4 | r < -4)
+
+out
+
+par(mfrow=c(2,3))
+plot(selected_train[[1]]~selected_train[[2]], main="Asking Price vs Distance to Downtown", xlab="Distance to Downtown", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[2]][out], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[3]], main="Asking Price vs Max Building Age", xlab="Max Building Age", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[3]][out], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[4]], main="Asking Price vs Bathrooms", xlab="Bathrooms", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[4]][out], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[5]], main="Asking Price vs Parking Spots", xlab="Parking Spots", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[5]][out], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[6]], main="Asking Price vs Photo Count", xlab="Photo Count", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[6]][out], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[7]], main="Asking Price vs Sqft Min", xlab="Sqft Min", ylab="Asking Price")
+points(selected_train[[1]][out] ~ selected_train[[7]][out], col="red", pch=19)
+```
+
+```{r, include=FALSE}
+#Finally, we will consider whether we have any influential points, by using all three definitions of influence (on its own prediction, on all predictions, or on specific coefficients). Again, we have a series of R functions that calculate the Cook's distance, cooks.distance(), the difference in fitted values, dffits(), and the difference in betas, dfbetas(). 
+#Influential points may not necessarily be a leverage point or outlier, but it is a quantified measure of the influence of each observation.
+
+# find the cooks distance and compare to cutoff
+Dcutoff <- qf(0.5, p+1,n-p-1)
+D <- cooks.distance(full2)
+w3 <- which(D > Dcutoff)
+w3
+
+
+# find the DFFITS and compare to cutoff
+DFFITScut <- 2*sqrt((p+1)/n)
+dfs <- dffits(full2)
+w4 <- which(abs(dfs)>DFFITScut)
+w4
+#overlaps in outliers/leverage
+
+
+# find the DFBETAS and compare to cutoff (notice the dimension of DFBETAS)
+DFBETAcut <- 2/sqrt(n)
+dfb <- dfbetas(full2)
+#head(dfb)
+#only look at the intercept on single parameter at a time
+w5 <- which(abs(dfb[,1]) > DFBETAcut)
+w5
+w6 <- which(abs(dfb[,2]) > DFBETAcut)
+w6
+w7 <- which(abs(dfb[,3]) > DFBETAcut)
+w7
+w8 <- which(abs(dfb[,4]) > DFBETAcut)
+w8
+w9 <- which(abs(dfb[,5]) > DFBETAcut)
+w9
+w10 <- which(abs(dfb[,6]) > DFBETAcut)
+w10
+w11 <- which(abs(dfb[,7]) > DFBETAcut)
+w11
+# many overlapping problematic observations
+
+#Flag anyone who is influential and plot them
+wunique <- unique(c(w3, w4, w5, w6, w7, w8, w9, w10, w11))
+wunique
+
+
+par(mfrow=c(2,3))
+plot(selected_train[[1]]~selected_train[[2]], main="Asking Price vs Distance to Downtown", xlab="Distance to Downtown", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[2]][wunique], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[3]], main="Asking Price vs Max Building Age", xlab="Max Building Age", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[3]][wunique], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[4]], main="Asking Price vs Bathrooms", xlab="Bathrooms", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[4]][wunique], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[5]], main="Asking Price vs Parking Spots", xlab="Parking Spots", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[5]][wunique], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[6]], main="Asking Price vs Photo Count", xlab="Photo Count", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[6]][wunique], col="red", pch=19)
+plot(selected_train[[1]]~selected_train[[7]], main="Asking Price vs Sqft Min", xlab="Sqft Min", ylab="Asking Price")
+points(selected_train[[1]][wunique] ~ selected_train[[7]][wunique], col="red", pch=19)
+
+```
+
+```{r, include=FALSE}
+#Automated selection
+# see what all-possible subsets gives us if we ignore the collinearity and simply use the selection procedure
+best <- regsubsets(asking_price ~ ., data=selected_train, nbest=1)
+summary(best)
+#subsets(best, statistic = "adjr2")
+```
+
+```{r, include=FALSE}
+mod1 <- lm(asking_price ~ sqft_min, data=selected_train)
+mod2 <- lm(asking_price ~ distance_to_dt + sqft_min, data=selected_train)
+mod3 <- lm(asking_price ~ distance_to_dt + building_age_max + sqft_min, data=selected_train)
+mod4 <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + sqft_min, data=selected_train)
+mod5 <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + sqft_min + parking_spots, data=selected_train)
+mod6 <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + sqft_min + parking_spots + photo_count, data=selected_train)
+
+# check vif of them
+vif(mod2)
+vif(mod3)
+vif(mod4)
+vif(mod5)
+vif(mod6)
+#same as before, there are multicollinearity between minimum and maximum area with maintenance fee
+
+#check adjusted R^2
+summary(mod2)$adj.r.squared
+summary(mod3)$adj.r.squared # significant increase compared with mod2, picked as preferred model3 later with consideration of context background
+summary(mod4)$adj.r.squared
+summary(mod5)$adj.r.squared
+summary(mod6)$adj.r.squared
+```
+
+
+```{r, include=FALSE}
+#Automated selection
+#choose stepwise selection method
+
+new_train <- selected_train %>% na.omit()
+
+?stepAIC
+
+stepAIC(lm(asking_price ~ ., data=new), direction="both", k = 2)
+stepAIC(lm(asking_price ~ ., data=new), direction="both", k = log(nrow(new)))
+# use the BIC (set k = log(nrow(new))) 
+#not using AICc since our sample size is large
+
+#consider both result from AIC and BIC as potential models
+```
+
+
+```{r, include=FALSE}
+#Validation for these preferred models
+preferred1 <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + parking_spots + sqft_min, data = new_train) # based on AIC result
+preferred2 <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + sqft_min, data = new_train) # based on BIC result and same conclusion from  all-possible subsets process
+preferred3 <- lm(asking_price ~ distance_to_dt + building_age_max + sqft_min, data = new_train)#with consideration of context background and check with different automated selection method
+```
+
+
+```{r, include=FALSE}
+# for model 3
+p3 <- length(coef(preferred1))-1
+n3 <-length(new_train$asking_price)
+p3
+n3
+#double check assumptions
+vif(preferred1)
+which(cooks.distance(preferred1)>qf(0.5, (p3+1), (n3-p3-1)))
+which(abs(dffits(preferred1)) > 2*sqrt((p3+1)/n3))
+par(mfrow=c(2,3))
+plot(rstandard(preferred1)~new_train$distance_to_dt)
+plot(rstandard(preferred1)~new_train$building_age_max)
+plot(rstandard(preferred1)~new_train$bathrooms)
+plot(rstandard(preferred1)~new_train$parking_spots)
+plot(rstandard(preferred1)~new_train$sqft_min)
+qqnorm(rstandard(preferred1))
+qqline(rstandard(preferred1))
+
+
+
+# for model 4
+p4 <- length(coef(preferred2))-1
+n4 <-length(new_train$asking_price)
+p4
+n4
+#double check assmptions
+vif(preferred2)
+which(cooks.distance(preferred2)>qf(0.5, (p4+1), (n4-p4-1)))
+which(abs(dffits(preferred2)) > 2*sqrt((p4+1)/n4))
+par(mfrow=c(2,3))
+plot(rstandard(preferred2)~new_train$distance_to_dt)
+plot(rstandard(preferred2)~new_train$building_age_max)
+plot(rstandard(preferred2)~new_train$bathrooms)
+plot(rstandard(preferred2)~new_train$sqft_min)
+qqnorm(rstandard(preferred2))
+qqline(rstandard(preferred2))
+
+# for model 5
+p5 <- length(coef(preferred3))-1
+n5 <-length(new_train$asking_price)
+p5
+n5
+#double check assumptions
+vif(preferred3)
+which(cooks.distance(preferred3)>qf(0.5, (p5+1), (n5-p5-1)))
+which(abs(dffits(preferred3)) > 2*sqrt((p5+1)/n5))
+par(mfrow=c(2,3))
+plot(rstandard(preferred3)~new_train$distance_to_dt)
+plot(rstandard(preferred3)~new_train$building_age_max)
+plot(rstandard(preferred3)~new_train$sqft_min)
+qqnorm(rstandard(preferred3))
+qqline(rstandard(preferred3))
+
+#all assumptions looks enough for satisfaction, nothing to be much concerned
+```
+
+
+```{r, include=FALSE}
+#These are our 3 candidate models. We can now validate them in our test dataset by fitting the same models, just switching out the data sets.
+new_test <- test %>% na.omit()
+
+
+preferred1test <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + parking_spots + sqft_min, data = new_test)
+preferred2test <- lm(asking_price ~ distance_to_dt + building_age_max + bathrooms + sqft_min, data = new_test) 
+
+preferred3test <- lm(asking_price ~ distance_to_dt + building_age_max + sqft_min, data =new_test)
+```
+  
+
+```{r, include=}
+# compare model 3's
+p3t <- length(coef(preferred1test))-1
+n3t <-length(new_test$asking_price)
+
+summary(preferred1)
+summary(preferred1test)
+#double check assumptions
+vif(preferred1test)
+which(cooks.distance(preferred1test)>qf(0.5, (p3t+1), (n3t-p3t-1)))
+which(abs(dffits(preferred1test)) > 2*sqrt((p3t+1)/n3t))
+par(mfrow=c(2,3))
+plot(rstandard(preferred1test)~new_test$distance_to_dt)
+plot(rstandard(preferred1test)~new_test$building_age_max)
+plot(rstandard(preferred1test)~new_test$bathrooms)
+plot(rstandard(preferred1test)~new_test$parking_spots)
+plot(rstandard(preferred1test)~new_test$sqft_min)
+qqnorm(rstandard(preferred1test))
+qqline(rstandard(preferred1test))
+```
+
+```{r, include=FALSE}
+# compare model 4's
+p4t <- length(coef(preferred2test))-1
+n4t <-length(new_test$asking_price)
+p4t
+n4t
+
+summary(preferred2)
+summary(preferred2test)
+#double check assumptions
+vif(preferred2test)
+which(cooks.distance(preferred2test)>qf(0.5, (p4t+1), (n4t-p4t-1)))
+which(abs(dffits(preferred2test)) > 2*sqrt((p4t+1)/n4t))
+par(mfrow=c(2,3))
+plot(rstandard(preferred2test)~new_test$distance_to_dt)
+plot(rstandard(preferred2test)~new_test$building_age_max)
+plot(rstandard(preferred2test)~new_test$bathrooms)
+plot(rstandard(preferred2test)~new_test$sqft_min)
+qqnorm(rstandard(preferred2test))
+qqline(rstandard(preferred2test))
+```
+
+```{r, include=FALSE}
+# compare model 5's
+p5t <- length(coef(preferred3test))-1
+n5t <-length(new_test$asking_price)
+p5t
+n5t
+
+summary(preferred3)
+summary(preferred3test)
+#double check assumptions
+vif(preferred3test)
+which(cooks.distance(preferred3test)>qf(0.5, (p5t+1), (n5t-p5t-1)))
+which(abs(dffits(preferred3test)) > 2*sqrt((p5t+1)/n5t))
+par(mfrow=c(2,3))
+plot(rstandard(preferred3test)~new_test$distance_to_dt)
+plot(rstandard(preferred3test)~new_test$building_age_max)
+plot(rstandard(preferred3test)~new_test$sqft_min)
+qqnorm(rstandard(preferred3test))
+qqline(rstandard(preferred3test))
+```
 
 # Discussion
 
