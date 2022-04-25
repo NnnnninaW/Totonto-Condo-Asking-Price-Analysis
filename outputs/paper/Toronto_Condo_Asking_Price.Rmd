@@ -12,22 +12,23 @@ bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = T)
 
-#Import needed packages using the function "library"
+#Import needed packages using the function "library".
 library(tidyverse)
 library(here)
 library(car)
 library(GGally)
 library(leaps)
 library(MASS)
-#Load the original data set
+
+#Load the original data set.
 data <-
   read_csv(here::here("inputs/data/toronto.csv"))
 ```
 
 ```{r, include=FALSE}
-#Check some basic characteristics of the original data using functions "glimpse", "colnames"
+#Check some basic characteristics of the original data using functions "glimpse", "colnames".
 glimpse(data)
 colnames(data)
 
@@ -48,10 +49,23 @@ We started our analysis by using R [@citeR], tidyverse[@tidyverse], here[@here].
 
 ## Data Source
 
+```{r, echo=FALSE}
+# Checking the home types of the original dataset to see if the data qualifies our topic focuses on Condo by using ggplot2.
+data %>% 
+  ggplot(mapping = aes(x = home_type)) +
+  theme_classic() +
+  labs(x = "Count",
+       y = "Home Type",
+       title = "Bar Chart of Home Types in Original Dataset") +
+  geom_bar()
+# There are sufficient observations for Condo so we could continue our analysis.
+```
+
+
 ```{r, include=FALSE}
-#Select home type that is Condo, and response variable = sale offer asking prices,for my selected topic : What is affecting the Condo Asking Price in Toronto?
+#Select home type that is Condo, and response variable = sale offer asking prices,for my topic : What is affecting the Condo Asking Price in Toronto?
 #Create a single measurement for location as distance to downtown using CN Tower (latitude = 43.642567,-79.387054) as the benchmark, transform degree to km -> *110
-#bedrooms, bathrooms, parking spots transformed
+#Variables: bedrooms, bathrooms, parking spots are mathematically transformed as needed to keep the same unit measure
 #Reverse select variables that are inapplicable for our topic or it is inapplicable to perform a multiple linear regression model
 
 data_cleaned <- data %>%
@@ -151,6 +165,7 @@ for (i in colnames(data_cleaned)) {
     }
 }
 
+# Saving the cleaned data set into the "inputs/data" folder for further reference using the function "write_csv".
 data_cleaned%>%
   write_csv(here::here("inputs/data/cleaned.csv"))
 ```
@@ -161,36 +176,69 @@ First, it is crucial that we could validate our final model, so we use the Valid
 
 Secondly, we would perform an Exploratory Data Analysis (EDA) to identify potential model violations.
 
-```{r, echo=FALSE}
+
+
+# Model
+
+To provide useful information for people interested in real estate investment, it is essential for us to estimate a relationship that describes how change in our predictors corresponds to values in our response. As we are trying to express the statistical relationship, we are not restricted to only looking at the relationship between one predictor and the response. Moreover, when assessing whether the collected data fits our model, it is always important to assess whether any of the model’s assumptions is violated. 
+
+## Statistical Model for Multiple Linear Regression
+It is common to have more than one factor to influence an outcome. By applying Multiple Linear Regression Model (MLR), we expect to find numerous factors that are related to our response variable. Unlike in Simple Linear Regression, where there is only one predictor for the response variable, in MLR, the number of predictors is $p \in \mathbb{N}$ predictors.
+$Y_i = \beta_0 + \beta_1 X_{i1} + \beta_2 X_{i2} + \cdots + \beta_p X_{ip} + \varepsilon_i$
+
+- $Y_i$ is the response variable, a.k.a. dependent variable.
+- $X_{ij}$ is the explanatory variable, a.k.a. independent variable.
+- $\beta_0$ is the intercept parameter. Statistically, it is the expected value of $Y_i$ when $X_{ij} = 0$.
+- $\beta_i$ is the slope parameter.
+- $\varepsilon_i$ is the random error, caused by variation of measure that we cannot count for.
+
+Since we are working with observations from a distribution, we need to incorporate error to represent that the data comes from a distribution that itself has variation. Just like Simple Linear Regression, the Multiple Linear Regression model also assumes that $\varepsilon_i \stackrel{\text{i.i.d}}{\sim} \mathcal{N}(0, \sigma^2)$. Therefore, the Simple Linear Regression is a special case of Multiple Linear Regression Model, where $p = 1$. With this assumption, we know that the model has $p + 2$ parameters in total, $(p + 1)$ $\beta_i$'s, and the variance of the error term, $\sigma^2$. Since there are $(p + 2)$ parameters, we will need at least $p + 2$ observations in order to fit the model and get an estimate for the parameter.
+
+
+## Validation and Assumptions
+
+First of all, it is crucial that we could validate our final model, so we use the Validation Methods to check if our final model is good enough not only for our collected sample, but also for others from the same population. We randomly created a “train dataset” that would be used to implement all of our analysis and a “test dataset” for evaluations. 
+
+Secondly, we would perform an Exploratory Data Analysis (EDA) to identify potential model violations. Recall that Multiple Linear Regression model also assumes that $\varepsilon_i \stackrel{\text{i.i.d}}{\sim} \mathcal{N}(0, \sigma^2)$. Therefore, we would also assess assumptions mentioned below formally with Residual Scatter Plots. Residuals are the distance between the true values and our fitted value so that any violations in assumptions should also appear in the residuals. 
+The estimated residual is defined by 
+$\hat{e}_i = y_i - \hat{y}_i = y_i - b_0 - b_1 x_i$
+We would like to visually assess whether an appropriate regression line has been fit to the data. If no pattern is found in the residual scatter plots, then it indicates that the model provides an adequate summary of the data. If a pattern is found, then the shape of the pattern would provide information on the function of $X$ that is missing from the model.
+
+We also need to check two conditions first to examine if a linear relation model were inappropriate, and if there are highly non-linear relations between our predictors. Simultaneously, we do not want any strong correlations between any of the predictor variables which is Multicollinearity. Multicollinearity could lead to misunderstanding and much larger standard errors. So, we would use the Variance Inflation Factor (VIF) to measure how inflated the errors will be due to the relationship of one predictor to the others. If any significant violations are detected, we would see whether a transformation were needed.
+
+Overall, we need to make sure it is reasonable for us to apply the MLR Model by checking these assumptions:
+
+- Response variable is related to predictor variables by the linear regression model that only the predictors we are including as predictors are related to the response. 
+  - Do not want to see any systematic patterns in residual plots, such as a curve.
+- The errors are uncorrelated.
+  - Do not want to see large clusters of residuals that have obvious separation from the rest.
+- The errors have a common variance.
+  - Do not want to see any pattern especially a fanning pattern where residuals gradually become more spread out.
+- The errors are Normally distributed.
+  - Do not want to see severe deviations in residuals.
+
+Then, we need to analyze whether there are problematic observations such as Leverage points, Outliers, and Influential points according to their measurements and cutoff values (APPENDIX). An **outlier** is a point located off the trend of the other observations. An outlier with respect to the response variable will lead to large residuals and can potentially affect the estimated regression line. A \textbf{leverage point} is characterized as being a single observation whose predictor values are overall quite distant from the center of mass of all predictors. They can have a disproportionate impact on the placement of the regression line (or equivalently on their own fitted value). \textbf{Influential points} generally do impact the estimated regression line but may not necessarily be a leverage point or outlier or both. It is important to check all three of these types of problematic observations for us to fully understand why the estimated regression line is being placed where it is.
+
+Finally, we would go over the automated selection processes to learn about what are the suggested models. Since we are expected to have a large number of predictors initially, automated ways could be especially helpful to obtain an overall sense of preferred models. Throughout our analysis, we would also refer to measurements like Adjusted $R^2$ as complementary benchmarks. It is named adjusted $R^2$ because it is adjusted for the number of predictors in the model. It is better to use adjusted $R^2$ instead of $R^2$ since $R^2$ would no longer be helpful to tell whether additional predictors are useful for explaining the response variable as the number of variable (p) increases. Combine with contextual reasons, we would generate three preferred models for validation. We would fit them in our test dataset to compare their properties, understand potential limitations, and choose the final model. At the end, instead of modifying our previous analysis, we would conclusively discuss our results with observed limitations.
+
+
+```{r, echo=FALSE, warning=FALSE}
+# Checking the Distribution of our response variable "Asking Price" by visualizing a histogram using ggplot2.
 Price <- data_cleaned %>%  
   ggplot(aes(x = asking_price)) +
   geom_histogram(aes(y=..density..), bins=10, colour = "black", fill = "light yellow") + 
+  theme_classic() +
    labs(title = "Asking Price Distribution Histogram",
         x = "Asking Price",
         y = "Density")+
   geom_density()
 Price
-
-#Not perfectly Normal, slightly skewed, but it is unimodal and good enough to proceed
+#The distribution is not perfectly Normal, slightly skewed, but it is unimodal and good enough to proceed with multiple linear regression model.
 ```
 
-# Model
-
-We would also assess assumptions mentioned below formally with Residual Scatter Plots. Residuals are the distance between the true values and our fitted value so that any violations in assumptions should also appear in the residuals. We also need to check two conditions first to examine if a linear relation model were inappropriate, and if there are highly non-linear relations between our predictors. Simultaneously, we do not want any strong correlations between any of the predictor variables which is Multicollinearity. Multicollinearity could lead to misunderstanding and much larger standard errors. So, we would use the Variance Inflation Factor (VIF) to measure how inflated the errors will be due to the relationship of one predictor to the others. If any significant violations are detected, we would see whether a transformation were needed.
-
-Overall, we need to make sure it is reasonable for us to apply the MLR Model by checking these assumptions:
-	Response variable is related to predictor variables by the linear regression model that only the predictors we are including as predictors are related to the response. 
-	Do not want to see any systematic patterns in residual plots, such as a curve.
-	The errors are uncorrelated.
-	Do not want to see large clusters of residuals that have obvious separation from the rest.
-	The errors have a common variance.
-	Do not want to see any pattern especially a fanning pattern where residuals gradually become more spread out.
-	The errors are Normally distributed.
-	Do not want to see severe deviations in residuals.
-Then, we need to see whether there are problematic observations such as Leverage points, Outliers, and Influential points to fully understand why the estimated regression line is being placed where it is. Finally, we would go over the automated selection processes to learn about what are the suggested models. Combining contextual reasons, we would generate three preferred models for validation. We would fit them in our test dataset to compare their properties, understand potential limitations, and choose final model. At the end, instead of modifying our previous analysis, we would conclusively discuss our results with observed limitations.
-
 ```{r, include=FALSE}
-#Create train and test data set 50/50, and prepare for validation at the end
+#Create train and test data set 50/50 to implement the Validation Method, and prepare for the validation at the end. 
+#Saving the created data sets into the "inputs/data" folder for further reference using the function "write_csv".
 set.seed(1)
 train <- data_cleaned[sample(1:nrow(data_cleaned), 0.5 * nrow(data_cleaned), replace=F), ]
 test <- data_cleaned[which(!(data_cleaned$id %in% train$id)),]
@@ -201,17 +249,20 @@ test%>%
 
 ```
 
-```{r, echo=FALSE, warning=FALSE}
-#Check if the train dataset and test dataset are capturing similar observations
+```{r, include=FALSE, warning=FALSE}
+#Check if the train data set and test data set are capturing similar observations by comparing their mean and standard deviation
 mtr <- lapply(train, mean)
 sdtr <- lapply(train, sd)
 mtest <- lapply(test, mean)
 sdtest <- lapply(test, sd)
 
 cbind(mtr, sdtr, mtest, sdtest) %>% knitr::kable(digits = 4)
+# There are no significant deviation between train and test data sets so it is good to proceed.
+# Analysis would be conducted on the Train Data Set and apply to the Test Data Set at the end for validation.
 ```
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, include=FALSE}
+# Visualizing the potential relationship between Numeric predictor variables and response variable through Scatter plots by using ggplot2
 train[!colnames(train) %in% factors] %>%
   pivot_longer(colnames(train)[!colnames(train) %in% factors][-2],
                values_to = "Value", names_to = "Variable") %>%
@@ -226,6 +277,7 @@ ggsave("scatterplots.png", width = 15, height = 15, units = "in")
 ```
 
 ```{r, warning=FALSE, echo=FALSE}
+# Visualizing the potential relationship between Categorical predictor variables and response variable through Box plots by using ggplot2
 train %>%
   pivot_longer(factors,
                values_to = "Value", names_to = "Variable") %>%
@@ -238,23 +290,20 @@ train %>%
        title = "Boxplots of Categorical Predictor Variable")
 ggsave("boxplots.png", width = 15, height = 15, units = "in")
 ```
-```{r}
-train[!colnames(train) %in% factors] %>%
-  pivot_longer(colnames(train)[!colnames(train) %in% factors], values_to = "Value", names_to = "Variable") %>%
-  ggplot(aes(x = Value)) +
-  geom_boxplot() + facet_wrap(~Variable, scales = "free")
-```
 
-```{r}
+
+
+```{r, echo=FALSE, warning=FALSE}
 train[colnames(train) %in% factors] %>%
   pivot_longer(colnames(train)[colnames(train) %in% factors], values_to = "Value", names_to = "Variable") %>%
   ggplot(aes(x = Value)) +
+  theme_minimal() +
   geom_boxplot() + facet_wrap(~Variable, scales = "free")
 ggsave("levels.png", width = 15, height = 15, units = "in")
 ```
 
 ```{r, include=FALSE}
-#Delete the variables that only have one level as all their entries has only one value
+#Delete the variables that only have one level as all their entries has only one value.
 train <- train %>% 
   dplyr::select(!c(id, pool, offer, furnished, home_type, has_locker))
 colnames(train)
@@ -264,6 +313,7 @@ colnames(train)
 # Results
 
 ```{r, include=FALSE}
+#The first full model is created for further reference.
 full_1<- lm(asking_price ~., data = train)
 summary(full_1)
 
@@ -301,11 +351,10 @@ selected_train%>%
 
 ```
 
-```{r, warning=FALSE, include=FALSE}
+```{r, warning=FALSE, echo=FALSE}
 #checking condition 2 and multicollinearity again on the new selected predictors
 selected_train %>% na.omit() %>% ggpairs()
-ggsave("condition2_rechecked.png", width = 15, height = 15, units = "in")
-
+ggsave("condition2-rechecked.png", width = 15, height = 15, units = "in")
 ```
 
 ```{r, include=FALSE}
@@ -354,8 +403,6 @@ for(i in c(2:7)){
 ```{r, include=FALSE}
 p <- powerTransform(lm(asking_price ~ ., data = selected_train))
 summary(p)
-
-
 #decide not to perform transformation
 ```
 
@@ -523,18 +570,18 @@ summary(mod6)$adj.r.squared
 
 ```{r, include=FALSE}
 #Automated selection
-#choose stepwise selection method
+#Choose Stepwise selection method
 
 new_train <- selected_train %>% na.omit()
 
 ?stepAIC
+stepAIC(lm(asking_price ~ ., data=new_train), direction="both", k = 2)
+stepAIC(lm(asking_price ~ ., data=new_train), direction="both", k = log(nrow(new_train)))
 
-stepAIC(lm(asking_price ~ ., data=new), direction="both", k = 2)
-stepAIC(lm(asking_price ~ ., data=new), direction="both", k = log(nrow(new)))
-# use the BIC (set k = log(nrow(new))) 
-#not using AICc since our sample size is large
+#Use the BIC (set k = log(nrow(new))) 
+#Not using AICc since our sample size is large
 
-#consider both result from AIC and BIC as potential models
+#Consider both result from AIC and BIC as potential models
 ```
 
 
@@ -616,7 +663,7 @@ preferred3test <- lm(asking_price ~ distance_to_dt + building_age_max + sqft_min
 ```
   
 
-```{r, include=}
+```{r, include=FALSE}
 # compare model 3's
 p3t <- length(coef(preferred1test))-1
 n3t <-length(new_test$asking_price)
