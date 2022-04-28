@@ -6,8 +6,8 @@ We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, D
 
 ## It is organised as follows:
 ### Inputs
-Data folder ontains original dataset and cleaned dataset for the analysis. Literature folder contains relevant literatures for our analysis.
-### Outputs
-Paper folder includes the produced R markdown file with the analysis conducted, reference list, and the pdf version of the analysis accordingly.
+Data folder ontains original dataset, cleaned dataset , and dataset created during the process for the analysis. Literature folder contains relevant literatures for our analysis. Table folder contains tables mentioned in our paper.
+### Outputs 
+Paper folder includes the produced R markdown file, reference list, created graphs and the final output pdf file of our research accordingly.
 ### Scripts
 This folder contains the produced scripts of our analysis.
