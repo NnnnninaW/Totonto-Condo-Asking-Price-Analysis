@@ -2,10 +2,9 @@
 title: "What is Affecting Toronto Condo Asking Price?"
 author: 
   - Sijian Wu
-thanks: "Code and data are available at: https://github.com/NnnnninaW/Totonto-Condo-Asking-Price-Analysis.git."
+thanks: "Code and data are available at: https://github.com/NnnnninaW/Totonto-Condo-Asking-Price-Analysis.git. Complementary Survey available at:https://docs.google.com/forms/d/e/1FAIpQLScxK6foA19kYJqFzpzFWQokcmxL_R3VimvgbpNlmX-lYU3opg/viewform."
 date: "`r format(Sys.time(), '%d %B %Y')`"
-abstract: "Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. This analysis consists of logistic Multiple Linear Regression performed with the statistical programming language R. The results estimate the statistical linear relationship of Toronto condo asking price with Distance to Downtown, Building Age Maximum, and Square Foot Minimum. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condo trading in Toronto with price lower than $1.5 million."
-keywords: "Toronto, Condo, Asking Price, Regression, MLR, Distance to Downtown"
+abstract: "Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions such “what is affecting Toronto real estate prices?”. This analysis consists of logistic Multiple Linear Regression performed with the statistical programming language R. The results estimate the statistical linear relationship of Toronto condo asking price with Distance to Downtown, Building Age Maximum, and Square Foot Minimum. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condo trading in Toronto with price lower than $1.5 million.\\par \\textbf{Keywords:} Toronto, Real Estate, Condo, MLR, Asking Price, Regression, Distance to Downtown"
 output:
   bookdown::pdf_document2
 toc: true
@@ -41,11 +40,16 @@ colnames(data)
 
 \newpage
 # Introduction
-Toronto Housing market and real estate has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or there are external factors. Also, condos are an entirely different segment than detached houses, in the same way Hamilton is an entirely different market than Toronto[@Jordon]. So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.[@WOWA]. Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with price lower than $1.5 million in despite of those with extremely high prices.
+The Toronto Housing market has boomed over the last decade. Investors would often face questions like “what is affecting Toronto real estate prices?”. First, we need to understand if the housing market is mainly fueled by supply and local demand, or if there are external factors. Also, condos are an entirely different segment than detached houses, in the same way, Hamilton is an entirely different market than Toronto (Scrinko, 2021). Real estate investment has always been an essential part of portfolio management for individuals since it can be extremely durable. Investing in real estate isn’t just for the rich and famous. Anyone can do it, even if you only have a small down payment. With the right preparation and research, anyone can enjoy the profits real estate offers[@investment].
 
-We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through Multiple Linear Regression (MLR) Model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables. Our final model has response variable as Toronto condo asking price, and predictor variables as Distance to Downtown, Building Age Maximum, and Square Foot Minimum. We would introduce our methods, results, interpretations, and limitations in the following sections. We aimed to provide reasonable information for audience like buyers, sellers, and agencies who are interested in condos in Toronto with price lower than $1.5 million.
+Moreover, the real estate market is usually localized due to geographic and economic differences. All real estate is local, with every property being unique in terms of location, physical structure, and financing[@realestate].
+So, our analysis would focus only on the Toronto Condo Apartment market. This category includes all apartments and condominiums. These are complexes of residential units with common areas such as hallways, parking lots, stairwells, etc.(WOWA, 2021). Since the average price of condos was $715,104 in November 2021, we would narrow our research focusing on Condos with a price lower than $1.5 million despite those with extremely high prices.
 
- We would introduce our methods, results, interpretations, and limitations in the following sections.
+We retrieved data from the website Condos.ca( https://www.condos.ca/) on 2021, December 5 for all kinds of information and asking prices that are public to potential buyers and sellers. Our research would be conducted through the Multiple Linear Regression (MLR) model to estimate the statistical linear relationship between one outcome/response variable with two or more explanatory/predictor variables[@sheather2009modern]. Our final model has response variables as Toronto condo asking price, and predictor variables such as Distance to Downtown, Building Age Maximum, and Square Foot Minimum. We aimed to provide reasonable information for audiences like buyers, sellers, and agencies who are interested in condos in Toronto with a price lower than $1.5 million.
+
+We should also keep in mind that the real estate market works very differently. When an investor buys a property, there is a risk that the seller is withholding information, or that the seller is unaware of problems. Therefore, research and inspections are important when buying real estate. And if you buy a property sight-unseen, such as at auction, be sure to consider the higher risk when making an offer[@realestate]. Real estate investment is also considered very illiquid, so it is necessary for investors to consider cautiously before investing.
+
+We would introduce our methods, results, interpretations, and limitations in the following sections. Section \@ref(data) would illustrate the source of our data and collection methods. Section \@ref(model) would introduce the MLR model including assumptions and measurements. Section \@ref(results) would demonstrate our analysis process and present our results for reference. Section \@ref(discussion) would evaluate our findings with ethical considerations, limitations, and recommendations for the next step. Section \@ref(appendix) includes complimentary information mentioned in our analysis. The last References Section is for citations for our research.
 
 \newpage
 # Data
@@ -355,9 +359,9 @@ colnames(train)
 
 \newpage
 
-Problems of interpretation would arise when we have correlated predictors. The issue is called Multicollinearity. The initial full model we fitted has large risk of multicollinearity. So we further eliminated the variable “Square Feet Maximum” according to the VIF results as shown in the table below.
+Problems of interpretation would arise when we have correlated predictors. The issue is called Multicollinearity. The initial full model we fitted has large risk of multicollinearity. So we further eliminated the variable “Square Feet Maximum” according to the VIF results as shown in Appendix \@ref(appendix4).
 
-![](../../inputs/table/VIF.png)
+
 
 We also rechecked our model to make sure the two Priority Condition are satisfied. Satisfying these two conditions would help us interpret our residual plots. We can use a plot of the response against the fitted values to determine whether Condition1 holds. As shown in Figure \@ref(fig:condition1), the points are randomly scattered around with no significant deviations among the functions. We also rechecked Condition 2 after we made modifications to our full model. As shown in Figure \@ref(fig:recheck-condition2),  there are no predictor variables with highly non-linear relations. Since both conditions are satisfied, we could analyze the residual plots and identify potential limitations.
 
@@ -845,6 +849,13 @@ In addition, we only obtained data about the building, but there is not much inf
 ### Levels of Certain Predictor Variables
 
 ![](./levels.png)
+
+
+\newpage
+
+## Appendix4
+### VIF After Modification
+![](../../inputs/table/VIF.png)
 
 \newpage
 # References
